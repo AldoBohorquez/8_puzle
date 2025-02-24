@@ -17,10 +17,6 @@ type Estado = {
 export class PuzzleComponent implements OnInit {
   ngOnInit(): void {
     // Se genera el puzzle al presionar el botón
-    this.generarTableroAleatorio();
-    this.tieneSolucion(this.generarTableroAleatorio());
-    this.calcularHeuristica(this.generarTableroAleatorio());
-    this.simulacionMovimientos(this.generarTableroAleatorio());
   }
 
   tamaño = 3;
@@ -48,7 +44,6 @@ export class PuzzleComponent implements OnInit {
       //se hace un push de los numeros desordenados en el tablero de 3*3
       tablero.push(numeros.slice(i * this.tamaño, (i + 1) * this.tamaño));
     }
-    console.log(tablero);
 
     return tablero;
   }
@@ -68,35 +63,42 @@ export class PuzzleComponent implements OnInit {
         }
       }
     }
-    console.log(inversiones);
 
     //retorna si es par o impar
     return inversiones % 2 === 0;
   }
 
   calcularHeuristica(tablero: number[][]): number {
-    //se crea una variable de heuristica contara la distancia manhattan
-    let h = 0;
-
-    //recorrido para calcular la heuristica donde se suma la distancia manhattan de cada posicion actual y la posicion objetivo
+    //crea una variable de distancia
+    let distancia = 0;
+    //recorrido para calcular la distancia
     for (let i = 0; i < this.tamaño; i++) {
       for (let j = 0; j < this.tamaño; j++) {
-        //se obtiene el valor de la posicion actual del tablero
+        //se obtiene el valor del tablero en la posicion i,j
         const valor = tablero[i][j];
-
-        //se obtiene la posicion objetivo del valor actual
-        const objetivo = this.tableroObjetivo
-          .map((fila) => fila.indexOf(valor))
-          .filter((pos) => pos !== -1);
-
-        //se suma la distancia manhattan de la posicion actual y la posicion objetivo
-        h += Math.abs(i - objetivo[0]) + Math.abs(j - objetivo[1]);
+        //si el valor es diferente de 0 se calcula la distancia
+        if (valor !== 0) {
+          //se obtiene la posicion del valor en el tablero
+          let objetivoI = 0;
+          let objetivoJ = 0;
+          //recorrido para encontrar la posicion del valor
+          for (let x = 0; x < this.tamaño; x++) {
+            for (let y = 0; y < this.tamaño; y++) {
+              //si el tablero objetivo en la posicion x,y es igual al valor se guarda la posicion
+              if (this.tableroObjetivo[x][y] === valor) {
+                objetivoI = x;
+                objetivoJ = y;
+                break;
+              }
+            }
+          }
+          //se suma la distancia de manhattan
+          distancia += Math.abs(i - objetivoI) + Math.abs(j - objetivoJ);
+        }
       }
     }
-    console.log(h);
-
-    // retorna la heuristica de la solucion
-    return h;
+    //retorna la distancia de manhattan
+    return distancia;
   }
 
   private encontrarCero(tablero: number[][]): [number, number] {
@@ -116,7 +118,6 @@ export class PuzzleComponent implements OnInit {
     const movimientos: number[][][] = [];
     //se obtiene la posicion del 0
     const [ceroI, ceroJ] = this.encontrarCero(tablero);
-    console.log(ceroI, ceroJ);
 
     //se crea un arreglo de direcciones donde se podra mover el 0
     const direcciones = [
@@ -151,9 +152,96 @@ export class PuzzleComponent implements OnInit {
         movimientos.push(nuevoTablero);
       }
     }
-    console.log(movimientos);
 
     //retorna los movimientos posibles del 0
     return movimientos;
+  }
+
+  async resolverTablero(): Promise<void> {
+    //se inicializa la variable estadosExplorados
+    this.estadosExplorados = [];
+    //se crea la variable visitados donde se guardaran los tableros visitados
+    const visitados = new Set<string>();
+    //se crea la cola donde se guardaran los estados del tablero
+    const cola: Estado[] = [
+      {
+        // se guarda el tablero inicial
+        tablero: this.tableroInicial,
+        // se guarda los pasos donde paso el tablero
+        pasos: [this.tableroInicial],
+        // se guarda la heuristica de la solucion en el tablero
+        h: this.calcularHeuristica(this.tableroInicial),
+      },
+    ];
+
+    //variable para limitar los estados y no se blucle infinito
+    const estadosMaximos = 10000;
+    let estadosVisitados = 0;
+
+    //recorrido para resolver el tablero
+    while (cola.length > 0) {
+      //si se alcanza el limite de estados visitados se imprime un mensaje
+      if (estadosVisitados >= estadosMaximos) {
+        console.log('Se alcanzó el límite de estados visitados');
+        return;
+      }
+      //se ordena la cola por la heuristica
+      cola.sort((a, b) => a.h - b.h);
+      //se obtiene el estado actual eliminando el primer elemento de la cola
+      const actual = cola.shift()!;
+
+      // Agregamos el estado actual a los estados explorados
+      this.estadosExplorados.push(actual.tablero);
+      // Incrementamos el contador de estados visitados
+      estadosVisitados++;
+
+      // Si la heurística es 0, hemos llegado a la solución
+      if (this.calcularHeuristica(actual.tablero) === 0) {
+        // Guardamos los pasos de la solución
+        this.pasosSolucion = actual.pasos;
+        return;
+      }
+
+      // Generamos los movimientos posibles
+      const movimientos = this.simulacionMovimientos(actual.tablero);
+      // Recorremos los movimientos y los agregamos a la cola si no han sido visitados
+      for (const nuevoTablero of movimientos) {
+        // Convertimos el tablero a un string para poder guardarlo en el set
+        const tableroStr = JSON.stringify(nuevoTablero);
+        // Si el tablero no ha sido visitado, lo agregamos a la cola
+        if (!visitados.has(tableroStr)) {
+          // Agregamos el tablero a los visitados
+          visitados.add(tableroStr);
+          cola.push({
+            tablero: nuevoTablero,
+            // Agregamos los pasos que hemos dado
+            pasos: [...actual.pasos, nuevoTablero],
+            h: this.calcularHeuristica(nuevoTablero),
+          });
+        }
+      }
+    }
+  }
+
+  async generarPuzzle(): Promise<void> {
+    //si se esta resolviendo no se puede generar otro puzzle
+    this.resolviendo = true;
+    try {
+      do {
+        // Generamos los tableros inicial y objetivo aleatorios
+        this.tableroInicial = this.generarTableroAleatorio();
+        this.tableroObjetivo = this.generarTableroAleatorio();
+      } while (!this.tieneSolucion(this.tableroInicial));
+
+      // Limpiamos soluciones anteriores
+      this.pasosSolucion = [];
+      this.estadosExplorados = [];
+
+      // Resolvemos el puzzle
+      await this.resolverTablero();
+    } finally {
+      // Se termina de resolver el puzzle
+      this.resolviendo = false;
+    }
   }
 }

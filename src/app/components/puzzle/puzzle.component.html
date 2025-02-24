@@ -1,0 +1,94 @@
+<!-- puzzle.component.html -->
+<div class="puzzle-container">
+    <h2>8-Puzzle</h2>
+
+    <div class="button-container">
+        <button (click)="generarPuzzle()" [disabled]="resolviendo">
+            {{ resolviendo ? 'Generando...' : 'Generar Puzzle' }}
+        </button>
+    </div>
+
+    <div class="initial-goal-states">
+        <div class="state-box">
+            <h3>Estado Inicial</h3>
+            @if (tableroInicial.length > 0) {
+            <div class="board">
+                @for (row of tableroInicial; track row) {
+                <div class="row">
+                    @for (cell of row; track cell) {
+                    <span class="cell" [class.empty]="cell === 0">
+                        {{ cell || '' }}
+                    </span>
+                    }
+                </div>
+                }
+            </div>
+            }
+        </div>
+
+        <div class="state-box">
+            <h3>Estado Objetivo</h3>
+            @if (tableroObjetivo.length > 0) {
+            <div class="board">
+                @for (row of tableroObjetivo; track row) {
+                <div class="row">
+                    @for (cell of row; track cell) {
+                    <span class="cell" [class.empty]="cell === 0">
+                        {{ cell || '' }}
+                    </span>
+                    }
+                </div>
+                }
+            </div>
+            }
+        </div>
+    </div>
+
+    @if (pasosSolucion.length > 0) {
+    <div class="solution-section">
+        <h3>Pasos de la Solución</h3>
+        <div class="states-grid">
+            @for (step of pasosSolucion; track step; let i = $index) {
+            <div class="state-box">
+                <h4>Paso {{ i + 1 }}</h4>
+                <div class="board">
+                    @for (row of step; track row) {
+                    <div class="row">
+                        @for (cell of row; track cell) {
+                        <span class="cell" [class.empty]="cell === 0">
+                            {{ cell || '' }}
+                        </span>
+                        }
+                    </div>
+                    }
+                </div>
+            </div>
+            }
+        </div>
+    </div>
+    }
+
+    @if (estadosExplorados.length > 0) {
+    <div class="explored-section">
+        <h3>Estados Evaluados</h3>
+        <div class="states-grid">
+            @for (state of estadosExplorados; track state; let i = $index) {
+            <div class="state-box">
+                <h4>Estado {{ i + 1 }}</h4>
+                <div class="board">
+                    @for (row of state; track row) {
+                    <div class="row">
+                        @for (cell of row; track cell) {
+                        <span class="cell" [class.empty]="cell === 0">
+                            {{ cell || '' }}
+                        </span>
+                        }
+                    </div>
+                    }
+                </div>
+            </div>
+            }
+        </div>
+    </div>
+    }
+</div>
